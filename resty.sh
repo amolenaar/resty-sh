@@ -1,19 +1,34 @@
 #!/bin/sh
 
+libs=":"
+main_configs=
+http_configs=
 
-while getopts 'I:m:s:h' OPTION
+function debug () {
+	if [ -n "$DEBUG" ]
+	then
+		echo "$@"
+	fi
+}
+
+# Arguments can be provided multiple times, in which case they're appended in a
+# list, separated by colon.
+while getopts 'dI:m:s:h' OPTION
 do
 	case "$OPTION" in
+	d)
+		DEBUG=1
+		;;
 	I)
-		echo "include $OPTARG"
+		debug "include $OPTARG"
 		libs="${libs}${libs:+:}$OPTARG"
 		;;
 	m)
-		echo "main-config $OPTARG"
+		debug "main-config $OPTARG"
 		main_configs="${main_configs}${main_configs:+:}$OPTARG"
 		;;
 	s)
-		echo "http-config $OPTARG"
+		debug "http-config $OPTARG"
 		http_configs="${http_configs}${http_configs:+:}$OPTARG"
 		;;
 	h)
@@ -22,7 +37,10 @@ do
 		;;
 	esac
 done
+shift $(($OPTIND - 1))
 
-echo "main-config $main_configs"
-echo "http-config $http_configs"
-echo "files $*"
+debug "main-configs $main_configs"
+debug "http-configs $http_configs"
+debug "files $*"
+
+
