@@ -4,10 +4,19 @@ Shell script based alternative to
 [resty-cli](https://github.com/openresty/resty-cli), the fancy command-line
 utilities for OpenResty.
 
+This is a deviation on the official resty CLI:
+
+ * It's written in shell script, so does not require Perl
+ * outputs are not redirected, so you can actually test nested server calls
+ * Not all features, such as Valgrind support
+ * Only allows for execution of files
+ * TODO: Adds test aggregation
+
+
 Description
 ===========
 
-(copied from resty-cli)
+(partially copied from resty-cli)
 
 The `resty.sh` command-line utility can be used to run OpenResty's Lua scripts
 directly off the command-line just like the `lua` or `luajit` command-line
