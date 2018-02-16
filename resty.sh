@@ -8,6 +8,7 @@ VERSION=1
 libs=""
 main_includes=
 http_includes=
+io_redirect=
 nameserver=$(cat /etc/resolv.conf | grep nameserver | head -1 | cut -f2 -d' ')
 nginx_path=nginx
 nginx_conf="${TMPDIR:-/tmp}/nginx-rest-sh-$$.conf"
@@ -17,6 +18,21 @@ errlog_level=warn
 function die() {
 	echo "$@" >&2
 	exit 1
+}
+
+function usage() {
+	cat << EOF >&2
+usage: $(basename $0) [-I libdir] [-m main-config] [-s http-config] [-n nginx]
+	[-l log-level] [-r] [-h] file.lua
+  -h			This help message
+  -I libdir		Include library directory in path
+  -m main-config	Include extra Nginx configuration at top level
+  -s http-config	Include extra Nginx configuration in the http block
+  -n nginx		Point to nginx binary, in case it's not on the path
+  -l log-level		Change log level to one of
+			debug, info, notice, warn, error, crit, alert, or emerg
+  -r			Change configuration to print everything to the console
+EOF
 }
 
 function debug () {
@@ -30,7 +46,7 @@ function abspath() {
 
 # Arguments can be provided multiple times, in which case they're appended in a
 # list, separated by colon.
-while getopts 'VdI:m:s:h' OPTION
+while getopts 'Vdl:I:m:s:h' OPTION
 do
 	case "$OPTION" in
 	V)
@@ -41,6 +57,9 @@ do
 	d)
 		DEBUG=1
 		errlog_level=debug
+		;;
+	l)
+		errlog_level=$OPTARG
 		;;
 	I)
 		libs="${libs}${libs:+;}$OPTARG/?.lua"
@@ -57,8 +76,11 @@ do
                 [ -f $OPTARG ] || die "Couls not find nginx binary at \"$OPTARG\""
 		nginx_path="$(abspath $OPTARG)"
 		;;
+        r)
+		io_redirect="ngx.print, ngx.say = output, outputln"
+		;;
 	h)
-		echo "script usage: $(basename $0) [-I libdir] [-m main-config] [-s http-config] [-n nginx] [-h] file.lua" >&2
+		usage
 		exit 0
 		;;
 	esac
@@ -91,19 +113,13 @@ loader=$(cat << EOF
 EOF
 )
 
-io_redirect=$(cat << EOF
-    ngx.print = output
-    ngx.say = outputln
-EOF
-)
-
 cat > "${nginx_conf}" << EOF
 daemon off;
 master_process off;
 worker_processes 1;
 pid logs/nginx.pid;
 
-error_log stderr $errlog_level;
+error_log stdout $errlog_level;
 
 events {
     worker_connections 64;
@@ -168,6 +184,8 @@ http {
     init_worker_by_lua_block {
         local exit = os.exit
         local ffi = require "ffi"
+
+	$io_redirect
 
         local function handle_err(err)
             if err then
